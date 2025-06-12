@@ -75,7 +75,7 @@ jobs:
 
     - name: Run smoke tests
       run: |
-        STAGING_URL="https://staging-crm.yourdomain.com"
+        STAGING_URL="https://staging-crm.propods.com"
         echo "Running smoke tests against $STAGING_URL"
         
         # Wait for service to be ready

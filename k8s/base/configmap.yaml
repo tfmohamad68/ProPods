@@ -5,14 +5,14 @@ metadata:
   labels:
     app: twenty
 data:
-  server-url: "https://CRM_DOMAIN"
-  frontend-url: "https://CRM_DOMAIN"
+  server-url: "https://propods.com"
+  frontend-url: "https://propods.com"
   storage-bucket: "twenty-storage-ENVIRONMENT"
   log-level: "info"
   # Email configuration
-  email-from-address: "noreply@CRM_DOMAIN"
+  email-from-address: "noreply@propods.com"
   email-from-name: "Twenty CRM"
-  email-system-address: "system@CRM_DOMAIN"
+  email-system-address: "system@propods.com"
   # Feature flags
   is-billing-enabled: "false"
   is-multiworkspace-enabled: "true"

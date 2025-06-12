@@ -89,7 +89,7 @@ jobs:
 
     - name: Run production health checks
       run: |
-        PROD_URL="https://crm.yourdomain.com"
+        PROD_URL="https://crm.propods.com"
         echo "Running health checks against $PROD_URL"
         
         # Wait for service to be ready
