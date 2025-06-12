@@ -14,8 +14,8 @@ COPY packages/twenty-ui/package.json ./packages/twenty-ui/
 COPY packages/twenty-shared/package.json ./packages/twenty-shared/
 COPY packages/twenty-front/package.json ./packages/twenty-front/
 
-# Install dependencies with frozen lockfile
-RUN yarn install --immutable && yarn cache clean
+# Install dependencies
+RUN yarn install --frozen-lockfile && yarn cache clean
 
 # Build stage for backend
 FROM deps AS server-build
