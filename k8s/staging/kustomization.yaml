@@ -21,7 +21,7 @@ configMapGenerator:
   - storage-bucket=twenty-storage-staging
   - log-level=debug
 
-patchesStrategicMerge:
+patches:
 - |-
   apiVersion: networking.k8s.io/v1
   kind: Ingress
