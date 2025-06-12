@@ -20,7 +20,7 @@ spec:
       serviceAccountName: twenty-sa
       containers:
       - name: twenty-server
-        image: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty:latest
+        image: twenty-app
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
@@ -136,7 +136,7 @@ spec:
       serviceAccountName: twenty-sa
       containers:
       - name: twenty-worker
-        image: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty:latest
+        image: twenty-app
         imagePullPolicy: Always
         command: ["node", "dist/src/queue-worker/queue-worker"]
         env:

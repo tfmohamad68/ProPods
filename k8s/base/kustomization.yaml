@@ -20,3 +20,8 @@ secretGenerator:
 commonLabels:
   app: twenty
   version: v1
+
+images:
+- name: twenty-app
+  newName: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty
+  newTag: latest

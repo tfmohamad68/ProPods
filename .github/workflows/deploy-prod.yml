@@ -60,7 +60,7 @@ jobs:
     - name: Update Kubernetes manifests
       run: |
         cd k8s/production
-        kustomize edit set image gcr.io/PROJECT_ID/twenty=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY }}/twenty:${{ steps.version.outputs.version }}
+        kustomize edit set image twenty-app=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY }}/twenty:${{ steps.version.outputs.version }}
 
     - name: Create namespace if not exists
       run: |
