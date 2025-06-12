@@ -49,5 +49,6 @@ patches:
     - staging-crm.4ow4.com
 
 images:
-- name: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty
+- name: twenty-app
+  newName: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty
   newTag: staging
