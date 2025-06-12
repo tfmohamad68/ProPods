@@ -1,0 +1,110 @@
+# Production-optimized Dockerfile for Twenty CRM
+# Build stage for dependencies
+FROM node:22-alpine AS deps
+WORKDIR /app
+
+# Copy dependency files
+COPY package.json yarn.lock .yarnrc.yml tsconfig.base.json nx.json ./
+COPY .yarn/releases ./.yarn/releases
+COPY .prettierrc ./
+COPY packages/twenty-emails/package.json ./packages/twenty-emails/
+COPY packages/twenty-server/package.json ./packages/twenty-server/
+COPY packages/twenty-server/patches ./packages/twenty-server/patches
+COPY packages/twenty-ui/package.json ./packages/twenty-ui/
+COPY packages/twenty-shared/package.json ./packages/twenty-shared/
+COPY packages/twenty-front/package.json ./packages/twenty-front/
+
+# Install dependencies with frozen lockfile
+RUN yarn install --immutable && yarn cache clean
+
+# Build stage for backend
+FROM deps AS server-build
+WORKDIR /app
+
+# Copy source code
+COPY packages/twenty-emails ./packages/twenty-emails
+COPY packages/twenty-shared ./packages/twenty-shared
+COPY packages/twenty-server ./packages/twenty-server
+
+# Build server
+RUN npx nx run twenty-server:build
+RUN mv /app/packages/twenty-server/dist /app/packages/twenty-server/build
+RUN npx nx run twenty-server:build:packageJson
+RUN mv /app/packages/twenty-server/dist/package.json /app/packages/twenty-server/package.json
+RUN rm -rf /app/packages/twenty-server/dist
+RUN mv /app/packages/twenty-server/build /app/packages/twenty-server/dist
+
+# Install production dependencies only
+RUN yarn workspaces focus --production twenty-emails twenty-shared twenty-server
+
+# Build stage for frontend
+FROM deps AS front-build
+WORKDIR /app
+
+ARG REACT_APP_SERVER_BASE_URL
+ENV REACT_APP_SERVER_BASE_URL=$REACT_APP_SERVER_BASE_URL
+
+# Copy source code
+COPY packages/twenty-front ./packages/twenty-front
+COPY packages/twenty-ui ./packages/twenty-ui
+COPY packages/twenty-shared ./packages/twenty-shared
+
+# Build frontend
+RUN npx nx build twenty-front --configuration=production
+
+# Final production stage
+FROM node:22-alpine AS production
+WORKDIR /app
+
+# Install production tools
+RUN apk add --no-cache \
+    curl \
+    jq \
+    postgresql-client \
+    tini
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copy built applications
+COPY --from=server-build --chown=nodejs:nodejs /app/packages /app/packages
+COPY --from=front-build --chown=nodejs:nodejs /app/packages/twenty-front/build /app/packages/twenty-server/dist/front
+
+# Create necessary directories
+RUN mkdir -p /app/.local-storage && \
+    chown -R nodejs:nodejs /app
+
+# Copy entrypoint script
+COPY --chown=nodejs:nodejs docker/entrypoint.prod.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Set metadata
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+LABEL org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.url="https://github.com/twentyhq/twenty" \
+      org.opencontainers.image.source="https://github.com/twentyhq/twenty" \
+      org.opencontainers.image.version=$VERSION \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.vendor="Twenty CRM" \
+      org.opencontainers.image.title="Twenty CRM" \
+      org.opencontainers.image.description="Production-ready Twenty CRM application"
+
+# Switch to non-root user
+USER nodejs
+
+# Use tini for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--", "/app/entrypoint.sh"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/healthz || exit 1
+
+EXPOSE 3000
+
+WORKDIR /app/packages/twenty-server
+
+CMD ["node", "dist/src/main"]

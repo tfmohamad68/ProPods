@@ -1,0 +1,93 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: us-central1
+  GKE_CLUSTER: twenty-staging
+  GKE_ZONE: us-central1-a
+  DEPLOYMENT_NAME: twenty-server
+  REPOSITORY: twenty-crm
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        token_format: 'access_token'
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ env.GKE_CLUSTER }}
+        location: ${{ env.GKE_ZONE }}
+
+    - name: Setup Kustomize
+      uses: imranismail/setup-kustomize@v2
+
+    - name: Update Kubernetes manifests
+      run: |
+        cd k8s/staging
+        kustomize edit set image gcr.io/PROJECT_ID/twenty=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY }}/twenty:${{ github.sha }}
+
+    - name: Create namespace if not exists
+      run: |
+        kubectl create namespace twenty-staging --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Create secrets
+      run: |
+        kubectl create secret generic twenty-secrets \
+          --from-literal=pg-host=${{ secrets.STAGING_PG_HOST }} \
+          --from-literal=pg-user=${{ secrets.STAGING_PG_USER }} \
+          --from-literal=pg-password=${{ secrets.STAGING_PG_PASSWORD }} \
+          --from-literal=redis-url=${{ secrets.STAGING_REDIS_URL }} \
+          --from-literal=app-secret=${{ secrets.STAGING_APP_SECRET }} \
+          --namespace=twenty-staging \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy to GKE
+      run: |
+        kustomize build k8s/staging | kubectl apply -f -
+        kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n twenty-staging
+        kubectl rollout status deployment/twenty-worker -n twenty-staging
+
+    - name: Verify deployment
+      run: |
+        kubectl get services -n twenty-staging
+        kubectl get pods -n twenty-staging
+
+    - name: Run smoke tests
+      run: |
+        STAGING_URL="https://staging-crm.yourdomain.com"
+        echo "Running smoke tests against $STAGING_URL"
+        
+        # Wait for service to be ready
+        for i in {1..30}; do
+          if curl -f -s "$STAGING_URL/healthz" > /dev/null; then
+            echo "Service is healthy"
+            break
+          fi
+          echo "Waiting for service to be ready... ($i/30)"
+          sleep 10
+        done
+        
+        # Basic API test
+        curl -f -s "$STAGING_URL/graphql" -H "Content-Type: application/json" \
+          -d '{"query":"{ __typename }"}' | grep -q "__typename"

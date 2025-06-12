@@ -1,0 +1,198 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: twenty-server
+  labels:
+    app: twenty
+    component: server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: twenty
+      component: server
+  template:
+    metadata:
+      labels:
+        app: twenty
+        component: server
+    spec:
+      serviceAccountName: twenty-sa
+      containers:
+      - name: twenty-server
+        image: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NODE_PORT
+          value: "3000"
+        - name: RUN_MIGRATIONS
+          value: "true"
+        - name: PG_DATABASE_HOST
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: pg-host
+        - name: PG_DATABASE_PORT
+          value: "5432"
+        - name: PG_DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: pg-user
+        - name: PG_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: pg-password
+        - name: PG_DATABASE_URL
+          value: "postgres://$(PG_DATABASE_USER):$(PG_DATABASE_PASSWORD)@$(PG_DATABASE_HOST):$(PG_DATABASE_PORT)/twenty"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: redis-url
+        - name: APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: app-secret
+        - name: SERVER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: twenty-config
+              key: server-url
+        - name: FRONTEND_URL
+          valueFrom:
+            configMapKeyRef:
+              name: twenty-config
+              key: frontend-url
+        - name: STORAGE_TYPE
+          value: "s3"
+        - name: STORAGE_S3_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: twenty-config
+              key: storage-bucket
+        - name: STORAGE_S3_REGION
+          value: "us-central1"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: local-storage
+          mountPath: /app/.local-storage
+      volumes:
+      - name: local-storage
+        persistentVolumeClaim:
+          claimName: twenty-storage-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: twenty-worker
+  labels:
+    app: twenty
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: twenty
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: twenty
+        component: worker
+    spec:
+      serviceAccountName: twenty-sa
+      containers:
+      - name: twenty-worker
+        image: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty:latest
+        imagePullPolicy: Always
+        command: ["node", "dist/src/queue-worker/queue-worker"]
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PG_DATABASE_HOST
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: pg-host
+        - name: PG_DATABASE_PORT
+          value: "5432"
+        - name: PG_DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: pg-user
+        - name: PG_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: pg-password
+        - name: PG_DATABASE_URL
+          value: "postgres://$(PG_DATABASE_USER):$(PG_DATABASE_PASSWORD)@$(PG_DATABASE_HOST):$(PG_DATABASE_PORT)/twenty"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: redis-url
+        - name: APP_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: twenty-secrets
+              key: app-secret
+        - name: DISABLE_DB_MIGRATIONS
+          value: "true"
+        - name: STORAGE_TYPE
+          value: "s3"
+        - name: STORAGE_S3_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: twenty-config
+              key: storage-bucket
+        - name: STORAGE_S3_REGION
+          value: "us-central1"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        volumeMounts:
+        - name: local-storage
+          mountPath: /app/.local-storage
+      volumes:
+      - name: local-storage
+        persistentVolumeClaim:
+          claimName: twenty-storage-pvc

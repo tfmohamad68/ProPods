@@ -1,0 +1,88 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: twenty-production
+
+resources:
+- ../base
+
+replicas:
+- name: twenty-server
+  count: 3
+- name: twenty-worker
+  count: 2
+
+configMapGenerator:
+- name: twenty-config
+  behavior: merge
+  literals:
+  - server-url=https://crm.yourdomain.com
+  - frontend-url=https://crm.yourdomain.com
+  - storage-bucket=twenty-storage-production
+  - log-level=info
+  - is-billing-enabled=true
+
+patchesStrategicMerge:
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: twenty-server
+  spec:
+    template:
+      spec:
+        containers:
+        - name: twenty-server
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 2Gi
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: twenty-worker
+  spec:
+    template:
+      spec:
+        containers:
+        - name: twenty-worker
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+- |-
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: twenty-ingress
+  spec:
+    rules:
+    - host: crm.yourdomain.com
+      http:
+        paths:
+        - path: /*
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: twenty-server
+              port:
+                number: 80
+- |-
+  apiVersion: networking.gke.io/v1
+  kind: ManagedCertificate
+  metadata:
+    name: twenty-ssl-cert
+  spec:
+    domains:
+    - crm.yourdomain.com
+
+images:
+- name: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty
+  newTag: latest

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: twenty-config
+  labels:
+    app: twenty
+data:
+  server-url: "https://CRM_DOMAIN"
+  frontend-url: "https://CRM_DOMAIN"
+  storage-bucket: "twenty-storage-ENVIRONMENT"
+  log-level: "info"
+  # Email configuration
+  email-from-address: "noreply@CRM_DOMAIN"
+  email-from-name: "Twenty CRM"
+  email-system-address: "system@CRM_DOMAIN"
+  # Feature flags
+  is-billing-enabled: "false"
+  is-multiworkspace-enabled: "true"
+  is-email-verification-required: "true"
+  # Security
+  api-rate-limiting-ttl: "60"
+  api-rate-limiting-limit: "100"
+  mutation-maximum-affected-records: "100"

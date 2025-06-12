@@ -1,0 +1,122 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (leave empty for latest)'
+        required: false
+        default: ''
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: us-central1
+  GKE_CLUSTER: twenty-production
+  GKE_ZONE: us-central1-a
+  DEPLOYMENT_NAME: twenty-server
+  REPOSITORY: twenty-crm
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        token_format: 'access_token'
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ env.GKE_CLUSTER }}
+        location: ${{ env.GKE_ZONE }}
+
+    - name: Setup Kustomize
+      uses: imranismail/setup-kustomize@v2
+
+    - name: Determine deployment version
+      id: version
+      run: |
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Update Kubernetes manifests
+      run: |
+        cd k8s/production
+        kustomize edit set image gcr.io/PROJECT_ID/twenty=${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY }}/twenty:${{ steps.version.outputs.version }}
+
+    - name: Create namespace if not exists
+      run: |
+        kubectl create namespace twenty-production --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Create secrets
+      run: |
+        kubectl create secret generic twenty-secrets \
+          --from-literal=pg-host=${{ secrets.PROD_PG_HOST }} \
+          --from-literal=pg-user=${{ secrets.PROD_PG_USER }} \
+          --from-literal=pg-password=${{ secrets.PROD_PG_PASSWORD }} \
+          --from-literal=redis-url=${{ secrets.PROD_REDIS_URL }} \
+          --from-literal=app-secret=${{ secrets.PROD_APP_SECRET }} \
+          --namespace=twenty-production \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy to GKE (Rolling Update)
+      run: |
+        kustomize build k8s/production | kubectl apply -f -
+        kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n twenty-production --timeout=600s
+        kubectl rollout status deployment/twenty-worker -n twenty-production --timeout=300s
+
+    - name: Verify deployment
+      run: |
+        kubectl get services -n twenty-production
+        kubectl get pods -n twenty-production
+
+    - name: Run production health checks
+      run: |
+        PROD_URL="https://crm.yourdomain.com"
+        echo "Running health checks against $PROD_URL"
+        
+        # Wait for service to be ready
+        for i in {1..60}; do
+          if curl -f -s "$PROD_URL/healthz" > /dev/null; then
+            echo "Production service is healthy"
+            break
+          fi
+          echo "Waiting for production service to be ready... ($i/60)"
+          sleep 10
+        done
+        
+        # Comprehensive health checks
+        echo "Testing GraphQL endpoint..."
+        curl -f -s "$PROD_URL/graphql" -H "Content-Type: application/json" \
+          -d '{"query":"{ __typename }"}' | grep -q "__typename"
+        
+        echo "Testing REST API..."
+        curl -f -s "$PROD_URL/rest" | grep -q "Twenty"
+        
+        echo "All health checks passed!"
+
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "Deployment failed, rolling back..."
+        kubectl rollout undo deployment/${{ env.DEPLOYMENT_NAME }} -n twenty-production
+        kubectl rollout undo deployment/twenty-worker -n twenty-production
+        kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n twenty-production
+        kubectl rollout status deployment/twenty-worker -n twenty-production

@@ -1,0 +1,60 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: twenty-ingress
+  labels:
+    app: twenty
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: twenty-ip
+    networking.gke.io/managed-certificates: twenty-ssl-cert
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+  - host: CRM_DOMAIN
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: twenty-server
+            port:
+              number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: twenty-ssl-cert
+spec:
+  domains:
+  - CRM_DOMAIN
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: twenty-backend-config
+spec:
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 60
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /healthz
+    port: 3000
+  cdn:
+    enabled: true
+    cachePolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: false
+    negativeCaching: true
+    negativeCachingPolicy:
+    - code: 404
+      ttl: 300
+    - code: 410
+      ttl: 300

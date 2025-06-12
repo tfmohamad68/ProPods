@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: twenty-staging
+
+resources:
+- ../base
+
+replicas:
+- name: twenty-server
+  count: 1
+- name: twenty-worker
+  count: 1
+
+configMapGenerator:
+- name: twenty-config
+  behavior: merge
+  literals:
+  - server-url=https://staging-crm.yourdomain.com
+  - frontend-url=https://staging-crm.yourdomain.com
+  - storage-bucket=twenty-storage-staging
+  - log-level=debug
+
+patchesStrategicMerge:
+- |-
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: twenty-ingress
+  spec:
+    rules:
+    - host: staging-crm.yourdomain.com
+      http:
+        paths:
+        - path: /*
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: twenty-server
+              port:
+                number: 80
+- |-
+  apiVersion: networking.gke.io/v1
+  kind: ManagedCertificate
+  metadata:
+    name: twenty-ssl-cert
+  spec:
+    domains:
+    - staging-crm.yourdomain.com
+
+images:
+- name: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty
+  newTag: staging
