@@ -51,7 +51,7 @@ spec:
               name: twenty-secrets
               key: pg-password
         - name: PG_DATABASE_URL
-          value: "postgres://$(PG_DATABASE_USER):$(PG_DATABASE_PASSWORD)@$(PG_DATABASE_HOST):$(PG_DATABASE_PORT)/twenty"
+          value: "postgres://$(PG_DATABASE_USER):$(PG_DATABASE_PASSWORD)@$(PG_DATABASE_HOST):5432/twenty"
         - name: REDIS_URL
           valueFrom:
             secretKeyRef:
@@ -160,7 +160,7 @@ spec:
               name: twenty-secrets
               key: pg-password
         - name: PG_DATABASE_URL
-          value: "postgres://$(PG_DATABASE_USER):$(PG_DATABASE_PASSWORD)@$(PG_DATABASE_HOST):$(PG_DATABASE_PORT)/twenty"
+          value: "postgres://$(PG_DATABASE_USER):$(PG_DATABASE_PASSWORD)@$(PG_DATABASE_HOST):5432/twenty"
         - name: REDIS_URL
           valueFrom:
             secretKeyRef:
