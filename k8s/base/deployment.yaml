@@ -7,6 +7,8 @@ metadata:
     component: server
 spec:
   replicas: 2
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: twenty
@@ -123,6 +125,8 @@ metadata:
     component: worker
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: twenty
