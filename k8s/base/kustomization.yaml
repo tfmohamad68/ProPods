@@ -12,10 +12,7 @@ configMapGenerator:
   behavior: merge
   files: []
 
-secretGenerator:
-- name: twenty-secrets
-  behavior: merge
-  files: []
+# Secrets are created by GitHub Actions workflow
 
 commonLabels:
   app: twenty
