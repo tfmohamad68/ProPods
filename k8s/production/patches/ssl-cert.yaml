@@ -1,0 +1,7 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: twenty-ssl-cert
+spec:
+  domains:
+  - crm.4ow4.com

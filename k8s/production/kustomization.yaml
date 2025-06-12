@@ -23,65 +23,10 @@ configMapGenerator:
   - is-billing-enabled=true
 
 patches:
-- |-
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: twenty-server
-  spec:
-    template:
-      spec:
-        containers:
-        - name: twenty-server
-          resources:
-            requests:
-              cpu: 1000m
-              memory: 2Gi
-            limits:
-              cpu: 4000m
-              memory: 8Gi
-- |-
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: twenty-worker
-  spec:
-    template:
-      spec:
-        containers:
-        - name: twenty-worker
-          resources:
-            requests:
-              cpu: 500m
-              memory: 1Gi
-            limits:
-              cpu: 2000m
-              memory: 4Gi
-- |-
-  apiVersion: networking.k8s.io/v1
-  kind: Ingress
-  metadata:
-    name: twenty-ingress
-  spec:
-    rules:
-    - host: crm.4ow4.com
-      http:
-        paths:
-        - path: /*
-          pathType: ImplementationSpecific
-          backend:
-            service:
-              name: twenty-server
-              port:
-                number: 80
-- |-
-  apiVersion: networking.gke.io/v1
-  kind: ManagedCertificate
-  metadata:
-    name: twenty-ssl-cert
-  spec:
-    domains:
-    - crm.4ow4.com
+- path: patches/server-resources.yaml
+- path: patches/worker-resources.yaml
+- path: patches/ingress.yaml
+- path: patches/ssl-cert.yaml
 
 images:
 - name: twenty-app
