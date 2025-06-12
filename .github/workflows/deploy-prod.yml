@@ -80,8 +80,8 @@ jobs:
     - name: Deploy to GKE (Rolling Update)
       run: |
         kustomize build k8s/production | kubectl apply -f -
-        kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n twenty-production --timeout=600s
-        kubectl rollout status deployment/twenty-worker -n twenty-production --timeout=300s
+        kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n twenty-production --timeout=900s
+        kubectl rollout status deployment/twenty-worker -n twenty-production --timeout=600s
 
     - name: Verify deployment
       run: |
