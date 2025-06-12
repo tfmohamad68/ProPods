@@ -43,6 +43,7 @@ jobs:
       with:
         cluster_name: ${{ env.GKE_CLUSTER }}
         location: ${{ env.GKE_ZONE }}
+        project_id: ${{ env.GCP_PROJECT_ID }}
 
     - name: Setup Kustomize
       uses: imranismail/setup-kustomize@v2
