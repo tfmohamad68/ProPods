@@ -11,7 +11,7 @@ metadata:
     kubernetes.io/ingress.allow-http: "false"
 spec:
   rules:
-  - host: propods.com
+  - host: crm.4ow4.com
     http:
       paths:
       - path: /*
@@ -28,7 +28,7 @@ metadata:
   name: twenty-ssl-cert
 spec:
   domains:
-  - propods.com
+  - crm.4ow4.com
 ---
 apiVersion: cloud.google.com/v1
 kind: BackendConfig

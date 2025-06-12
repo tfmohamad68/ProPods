@@ -16,8 +16,8 @@ configMapGenerator:
 - name: twenty-config
   behavior: merge
   literals:
-  - server-url=https://staging-crm.propods.com
-  - frontend-url=https://staging-crm.propods.com
+  - server-url=https://staging-crm.4ow4.com
+  - frontend-url=https://staging-crm.4ow4.com
   - storage-bucket=twenty-storage-staging
   - log-level=debug
 
@@ -29,7 +29,7 @@ patchesStrategicMerge:
     name: twenty-ingress
   spec:
     rules:
-    - host: staging-crm.propods.com
+    - host: staging-crm.4ow4.com
       http:
         paths:
         - path: /*
@@ -46,7 +46,7 @@ patchesStrategicMerge:
     name: twenty-ssl-cert
   spec:
     domains:
-    - staging-crm.propods.com
+    - staging-crm.4ow4.com
 
 images:
 - name: us-central1-docker.pkg.dev/propods-crm/twenty-crm/twenty
