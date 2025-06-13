@@ -67,8 +67,8 @@ RUN apk add --no-cache \
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy built applications
-COPY --from=server-build --chown=nodejs:nodejs /app/packages /app/packages
+# Copy built applications and dependencies
+COPY --from=server-build --chown=nodejs:nodejs /app /app
 COPY --from=front-build --chown=nodejs:nodejs /app/packages/twenty-front/build /app/packages/twenty-server/dist/front
 
 # Create necessary directories
