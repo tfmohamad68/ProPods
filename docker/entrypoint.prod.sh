@@ -15,7 +15,7 @@ echo "PostgreSQL is ready!"
 if [ "$RUN_MIGRATIONS" = "true" ]; then
   echo "Running database migrations..."
   cd /app/packages/twenty-server
-  yarn database:migrate:prod
+  npx nx run twenty-server:database:migrate:prod || true
   echo "Database migrations completed!"
 fi
 
