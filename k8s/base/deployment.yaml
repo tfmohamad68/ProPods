@@ -142,7 +142,7 @@ spec:
       - name: twenty-worker
         image: twenty-app
         imagePullPolicy: Always
-        command: ["node", "dist/src/queue-worker/queue-worker"]
+        command: ["node", "/app/packages/twenty-server/dist/src/queue-worker/queue-worker"]
         env:
         - name: NODE_ENV
           value: "production"
