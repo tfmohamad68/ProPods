@@ -1,0 +1,73 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to production (manual step)
+        run: |
+          echo "🚀 Docker image built and pushed successfully!"
+          echo "📦 Image: ${{ steps.meta.outputs.tags }}"
+          echo ""
+          echo "To complete deployment, run one of these commands on your server:"
+          echo ""
+          echo "🐳 Using Docker Compose:"
+          echo "docker-compose -f docker/docker-compose.prod.yml pull"
+          echo "docker-compose -f docker/docker-compose.prod.yml up -d"
+          echo ""
+          echo "⚙️ Using deployment script:"
+          echo "./scripts/deploy.sh production"
+          echo ""
+          echo "☸️ Using Kubernetes:"
+          echo "kubectl set image deployment/twenty-server twenty-server=${{ steps.meta.outputs.tags }}"
+          echo "kubectl set image deployment/twenty-worker twenty-worker=${{ steps.meta.outputs.tags }}"
