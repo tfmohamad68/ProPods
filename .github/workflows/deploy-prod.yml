@@ -73,7 +73,7 @@ jobs:
     - name: Create secrets
       run: |
         kubectl create secret generic twenty-secrets \
-          --from-literal=pg-host=${{ secrets.PROD_PG_HOST }} \
+          --from-literal=pg-host=35.223.160.163 \
           --from-literal=pg-user=${{ secrets.PROD_PG_USER }} \
           --from-literal=pg-password=${{ secrets.PROD_PG_PASSWORD }} \
           --from-literal=redis-url=${{ secrets.PROD_REDIS_URL }} \
