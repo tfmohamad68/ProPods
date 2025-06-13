@@ -34,8 +34,9 @@ RUN mv /app/packages/twenty-server/dist/package.json /app/packages/twenty-server
 RUN rm -rf /app/packages/twenty-server/dist
 RUN mv /app/packages/twenty-server/build /app/packages/twenty-server/dist
 
-# Install production dependencies only
-RUN yarn workspaces focus --production twenty-emails twenty-shared twenty-server
+# Install production dependencies
+# Keep all dependencies for now to ensure the app works
+RUN cd /app && yarn install --production=false
 
 # Build stage for frontend
 FROM deps AS front-build
