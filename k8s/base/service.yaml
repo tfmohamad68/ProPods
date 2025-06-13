@@ -31,7 +31,7 @@ metadata:
     app: twenty
 spec:
   accessModes:
-  - ReadWriteMany
+  - ReadWriteOnce
   storageClassName: standard-rwo
   resources:
     requests:
